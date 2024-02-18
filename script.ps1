@@ -1,9 +1,17 @@
-$uri = Invoke-WebRequest "https://www.bbc.co.uk/sport/football/scores-fixtures"
-$res = $uri.ParsedHtml.getElementsByClassName('gs-o-list-ui')
-$links = ($res[0] | ForEach-Object{$_.getElementsByTagName('a')}).href -replace 'about:/', ''
-$matches = foreach($link in $links){
-    "<li>https://www.bbc.co.uk/$link</li>"
+$headers = @{
+    "X-Auth-Token" = "d639bd2e154c4087ab3b9c20d016e262"
 }
+
+$res = Invoke-RestMethod "https://api.football-data.org/v4/matches" -Method Get -Headers $headers
+$match = $res.matches | Where-Object {$_.competition.name -eq 'Premier League'}
+$todayGames = foreach($game in $match){
+    $hometeam = $game.homeTeam.name
+    $awayteam = $game.awayTeam.name
+    $time = $game.utcDate
+    "<li>$hometeam vs $awayTeam | $time</li>"
+}
+
+
 
 $username = (Get-Content "$PSScriptRoot\utils\username.txt")
 $password = (Get-Content "$PSScriptRoot\utils\password.txt") | ConvertTo-SecureString -AsPlainText -Force
@@ -14,14 +22,14 @@ $body = @"
 <h1>Premier League Matches This Weekend</h1>
 <p>Here are a list of football matches happening today</p>
 <ul>
-    $matches
+    $todayGames
 </ul>
 "@
 
 $email = @{
     from = $username
     to = 'louisruocco1@gmail.com'
-    subject = "Noremier League Matches This Weekend"
+    subject = "Premier League Matches This Weekend"
     smtpserver = "smtp.gmail.com"
     body = $body
     port = 587
